@@ -1,5 +1,9 @@
 package dslabs.primarybackup;
 
+import dslabs.atmostonce.AMOApplication;
+import dslabs.atmostonce.AMOCommand;
+import dslabs.atmostonce.AMOResult;
+import dslabs.framework.Application;
 import dslabs.framework.Message;
 import lombok.Data;
 
@@ -25,11 +29,35 @@ class ViewReply implements Message {
 @Data
 class Request implements Message {
   // Your code here...
+  private final AMOCommand amoCommand;
 }
 
 @Data
 class Reply implements Message {
   // Your code here...
+  private final AMOResult amoResult;
 }
 
 // Your code here...
+@Data
+class ForwardRequest implements Message {
+  private final int viewNum;
+  private final AMOCommand amoCommand;
+}
+
+@Data
+class ForwardReply implements Message {
+  private final int viewNum;
+  private final AMOCommand amoCommand;
+}
+
+@Data
+class StateTransferRequest implements Message {
+  private final int viewNum;
+  private final AMOApplication<Application> app;
+}
+
+@Data
+class StateTransferReply implements Message {
+  private final int viewNum;
+}
