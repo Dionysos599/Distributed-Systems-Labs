@@ -1,5 +1,7 @@
 package dslabs.clientserver;
 
+import dslabs.atmostonce.AMOCommand;
+import dslabs.atmostonce.AMOResult;
 import dslabs.framework.Address;
 import dslabs.framework.Client;
 import dslabs.framework.Command;
@@ -17,8 +19,10 @@ import lombok.ToString;
 @EqualsAndHashCode(callSuper = true)
 class SimpleClient extends Node implements Client {
   private final Address serverAddress;
-
-  // Your code here...
+  private int seqNum = 0;
+  private Command currentCommand;
+  private AMOCommand amoCommand;
+  private Result result;
 
   /* -----------------------------------------------------------------------------------------------
    *  Construction and Initialization
@@ -38,32 +42,50 @@ class SimpleClient extends Node implements Client {
    * ---------------------------------------------------------------------------------------------*/
   @Override
   public synchronized void sendCommand(Command command) {
-    // Your code here...
+    this.currentCommand = command;
+    this.result = null;
+
+    amoCommand = new AMOCommand(address(), seqNum, command);
+
+    send(new Request(amoCommand), serverAddress);
+    set(new ClientTimer(amoCommand), ClientTimer.CLIENT_RETRY_MILLIS);
   }
 
   @Override
   public synchronized boolean hasResult() {
-    // Your code here...
-    return false;
+    return result != null;
   }
 
   @Override
   public synchronized Result getResult() throws InterruptedException {
-    // Your code here...
-    return null;
+    while (result == null) {
+      wait();
+    }
+
+    return result;
   }
 
   /* -----------------------------------------------------------------------------------------------
    *  Message Handlers
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void handleReply(Reply m, Address sender) {
-    // Your code here...
+    AMOResult amoResult = m.result();
+
+    if (amoCommand != null && amoResult.sequenceNum() == seqNum) {
+      result = amoResult.result();
+      seqNum++;
+
+      notify();
+    }
   }
 
   /* -----------------------------------------------------------------------------------------------
    *  Timer Handlers
    * ---------------------------------------------------------------------------------------------*/
   private synchronized void onClientTimer(ClientTimer t) {
-    // Your code here...
+    if (t.command().equals(amoCommand) && result == null) {
+      send(new Request(amoCommand), serverAddress);
+      set(new ClientTimer(amoCommand), ClientTimer.CLIENT_RETRY_MILLIS);
+    }
   }
 }
